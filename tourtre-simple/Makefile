@@ -4,15 +4,15 @@ CCPP = g++
 #preprocessor defines
 DEFINES = -DUSE_ZLIB
 
-OPTFLAGS = -O2
+OPTFLAGS = -O2 -funroll-all-loops
 
 #CFLAGS = -ansi -pedantic -Wall -Werror -fPIC 
 #CFLAGS = -ansi -pedantic -Wall -fPIC 
-CFLAGS = -ansi $(OPTFLAGS)
+CFLAGS = -ansi $(OPTFLAGS) -g
 
 CPPFLAGS = $(OPTFLAGS) -I./include $(DEFINES)
 
-LINKFLAGS = -lz
+LINKFLAGS = -lz -g
 
 all : simple
 
