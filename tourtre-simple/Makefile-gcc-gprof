@@ -30,25 +30,25 @@ objs =  src/tourtre.o     \
 simple : $(objs)
 	$(CCPP) $(CPPFLAGS) -o simple $^ $(LINKFLAGS)
 
-src/tourtre.o : src/tourtre.c include/tourtre.h src/ctMisc.h include/ctArc.h include/ctNode.h src/ctComponent.h include/ctNode.h src/ctQueue.h src/ctAlloc.h
+src/tourtre.o : src/tourtre.cpp include/tourtre.h include/ctMisc.h include/ctArc.h include/ctNode.h include/ctComponent.h include/ctNode.h include/ctQueue.h src/ctAlloc.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-src/ctArc.o : src/ctArc.c include/tourtre.h src/ctMisc.h include/ctArc.h 
+src/ctArc.o : src/ctArc.cpp include/tourtre.h include/ctMisc.h include/ctArc.h 
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-src/ctBranch.o : src/ctBranch.c include/tourtre.h src/ctMisc.h include/ctBranch.h 
+src/ctBranch.o : src/ctBranch.cpp include/tourtre.h include/ctMisc.h include/ctBranch.h 
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-src/ctComponent.o : src/ctComponent.c include/tourtre.h src/ctMisc.h src/ctComponent.h 
+src/ctComponent.o : src/ctComponent.cpp include/tourtre.h include/ctMisc.h include/ctComponent.h 
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-src/ctNode.o : src/ctNode.c include/tourtre.h src/ctMisc.h include/ctNode.h 
+src/ctNode.o : src/ctNode.cpp include/tourtre.h include/ctMisc.h include/ctNode.h 
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-src/ctQueue.o : src/ctQueue.c include/tourtre.h src/ctMisc.h src/ctQueue.h 
+src/ctQueue.o : src/ctQueue.cpp include/tourtre.h include/ctMisc.h include/ctQueue.h 
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-src/ctNodeMap.o : src/ctNodeMap.c src/ctNodeMap.h include/ctNode.h src/ctQueue.h src/sglib.h
+src/ctNodeMap.o : src/ctNodeMap.cpp include/ctNodeMap.h include/ctNode.h include/ctQueue.h src/sglib.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 examples/simple/obj/Data.o: examples/simple/src/Data.cpp examples/simple/src/Data.h examples/simple/src/Global.h 

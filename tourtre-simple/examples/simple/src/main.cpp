@@ -2,10 +2,7 @@
 #include <fstream>
 #include <cstring>
 
-extern "C" 
-{
 #include <tourtre.h>
-}
 
 #include "Data.h"
 #include "Mesh.h"
@@ -131,12 +128,12 @@ int main( int argc, char ** argv ) {
 		data.totalSize, //numVertices
 		&(totalOrder.front()), //totalOrder. Take the address of the front of an stl vector, which is the same as a C array
 		&value,
-		&neighbors,
+		//&neighbors,
 		&mesh //data for callbacks. The global functions less, value and neighbors are just wrappers which call mesh->getNeighbors, etc
 	);
 	
 	//create contour tree
-	ct_sweepAndMerge( ctx );
+	ct_sweepAndMerge<neighbors>( ctx );
 	ctBranch * root = ct_decompose( ctx );
 	
 	//create branch decomposition

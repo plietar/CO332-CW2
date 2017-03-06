@@ -28,7 +28,7 @@ struct ctContext
      * store the neighbors in the array nbrs, which is of size CT_MAX_VALENCE.
      * This function should return the valence of vertex v 
      **/	    
-    size_t (*neighbors)( size_t v, size_t* nbrs, void* );
+    //size_t (*neighbors)( size_t v, size_t* nbrs, void* );
 
     /** 
      * OPTIONAL -- Maximum valence of a vertex. The default is 256. The array

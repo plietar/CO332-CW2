@@ -34,10 +34,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include <stdlib.h> /* size_t */
+#include <stdint.h>
 
 #include "ctArc.h"
 #include "ctBranch.h"
 #include "ctNode.h"
+#include "ctComponent.h"
+#include "ctContext.h"
 
 
 /** \brief Holds all the data.
@@ -68,11 +71,12 @@ deallocation function is ct_cleanup
 @param data            User data passed to all callbacks.
 */
 
+
 ctContext * ct_init(
     size_t  numVertices,
     size_t  *totalOrder,
     double  (*value)( size_t v, void* ),
-    size_t  (*neighbors)( size_t v, size_t* nbrs, void* ),
+    //size_t  (*neighbors)( size_t v, size_t* nbrs, void* ),
     void*  data
 );
 
@@ -143,36 +147,6 @@ void ct_nodeAllocator( ctContext * ctx, ctNode* (*allocNode)(void*) , void (*fre
  * to use this if you want to sublcass ctBranch.
  **/
 void ct_branchAllocator( ctContext * ctx, ctBranch* (*allocBranch)(void*), void (*freeBranch)( ctBranch*, void*) );
-
-
-
-
-/**
- * Perform the sweep and merge algorithm. This will take a while. Returns some
- * arc of the contour tree. The constructed tree is owned by the library, and
- * will be deleted when ct_cleanup is called. If you want your own tree, use
- * ct_copyTree.
- **/
-ctArc* ct_sweepAndMerge( ctContext * ctx );
-
-
-/**
- * Perform just the join sweep. The point of calling this would be to
- * also call the split sweep in another thread; they can be performed
- * concurrently. After both are done, call ct_mergeTrees to get the
- * final contour tree
- **/
-
-void ct_joinSweep( ctContext * ctx );
-
-/**
- * Perform just the split sweep. The point of calling this would be to
- * also call the join sweep in another thread; they can be performed
- * concurrently. After both are done, call ct_mergeTrees to get the
- * final contour tree
- **/
-
-void ct_splitSweep( ctContext * ctx );
 
 /**
  * Call this after ct_joinSweep and ct_splitSweep are finished. It
@@ -270,6 +244,168 @@ void ct_arcsAndNodes( ctArc *a,
  * one belongs to the library and will be freed by ct_cleaup
  **/
 void ct_deleteTree( ctArc *a, ctContext *ctx );
+
+void ct_augment( ctContext * ctx );
+ctArc * ct_merge( ctContext * ctx );
+void ct_checkContext ( ctContext * ctx );
+
+template <size_t (NeighborsFn)( size_t v, size_t* nbrs, void* )>
+ctComponent* 
+ct_sweep
+(   size_t start, 
+    size_t end, 
+    int inc, 
+    ctComponentType type,
+    ctComponent *comps[],
+    size_t* next, 
+
+    ctContext* ctx )
+{
+ct_checkContext(ctx);
+{
+    size_t itr = 0, i = 0, n;
+    ctComponent * iComp;
+    int numExtrema = 0;
+    int numSaddles = 0;
+    size_t * nbrs = (size_t*)calloc ( ctx->maxValence, sizeof(size_t) );
+
+    for ( itr = start; itr != end; itr += inc ) {
+        size_t numNbrs;
+        int numNbrComps;
+        
+        i = ctx->totalOrder[itr];
+        
+        iComp = NULL;
+        numNbrs = NeighborsFn(i,nbrs,ctx->cbData);
+        numNbrComps = 0;
+        for (n = 0; n < numNbrs; n++) {
+            size_t j = nbrs[n];
+            
+            if ( comps[j] ) {
+                ctComponent * jComp = ctComponent_find( comps[j] );
+
+                if (iComp != jComp) {
+                    if (numNbrComps == 0) {
+                        numNbrComps++;
+                        iComp = jComp;
+                        comps[i] = iComp;
+                        next[iComp->last] = i;
+                    } else if (numNbrComps == 1) {
+                        /* create new component */
+                        ctComponent * newComp = ctComponent_new(type); 
+                        newComp->birth = i;
+                        ctComponent_addPred( newComp, iComp );
+                        ctComponent_addPred( newComp, jComp );
+
+                        /* finish the two existing components */
+                        iComp->death = i;
+                        iComp->succ = newComp;
+                        ctComponent_union(iComp, newComp);
+
+                        jComp->death = i;
+                        jComp->succ = newComp;
+                        ctComponent_union(jComp, newComp);
+
+                        next[ jComp->last ] = i;
+
+                        iComp = newComp;
+                        comps[i] = newComp;
+                        newComp->last = i;
+
+                        numSaddles++;
+                        numNbrComps++;
+                        
+                    } else {
+                        /*finish existing arc */
+                        jComp->death = i;
+                        jComp->succ = iComp;
+                        ctComponent_union(jComp,iComp);
+                        ctComponent_addPred(iComp,jComp);
+                        next[jComp->last] = i;
+                    }
+                }
+            }
+        } /*  for each neighbor */
+
+        if (numNbrComps == 0) {
+            /* this was a local maxima. create a new component */
+            iComp = ctComponent_new(type);
+            iComp->birth = i;
+            comps[i] = iComp;
+            iComp->last = i;
+            numExtrema++;
+        } else if (numNbrComps == 1) {
+            /* this was a regular point. set last */
+            iComp->last = i;
+        }
+
+    } /* for each vertex */
+
+    /* tie off end */
+    iComp = ctComponent_find( comps[i] );
+    iComp->death = i;
+
+    /* terminate path */
+    next[i] = CT_NIL;
+
+    free(nbrs);
+    return iComp;
+}
+}
+
+/**
+ * Perform just the join sweep. The point of calling this would be to
+ * also call the split sweep in another thread; they can be performed
+ * concurrently. After both are done, call ct_mergeTrees to get the
+ * final contour tree
+ **/
+template <size_t (NeighborsFn)( size_t v, size_t* nbrs, void* )>
+void ct_joinSweep( ctContext * ctx )
+{
+ct_checkContext(ctx);
+{
+    ctx->joinRoot = 
+        ct_sweep<NeighborsFn>( 0,ctx->numVerts,+1,
+            CT_JOIN_COMPONENT, ctx->joinComps, ctx->nextJoin, ctx  );
+}
+}
+
+/**
+ * Perform just the split sweep. The point of calling this would be to
+ * also call the join sweep in another thread; they can be performed
+ * concurrently. After both are done, call ct_mergeTrees to get the
+ * final contour tree
+ **/
+template <size_t (NeighborsFn)( size_t v, size_t* nbrs, void* )>
+void ct_splitSweep( ctContext * ctx )
+{
+ct_checkContext(ctx);
+{
+    ctx->splitRoot = 
+        ct_sweep<NeighborsFn>( ctx->numVerts-1,-1,-1, 
+            CT_SPLIT_COMPONENT, ctx->splitComps, ctx->nextSplit, ctx );
+}
+}
+
+/**
+ * Perform the sweep and merge algorithm. This will take a while. Returns some
+ * arc of the contour tree. The constructed tree is owned by the library, and
+ * will be deleted when ct_cleanup is called. If you want your own tree, use
+ * ct_copyTree.
+ **/
+template <size_t (NeighborsFn)( size_t v, size_t* nbrs, void* )>
+ctArc * ct_sweepAndMerge( ctContext * ctx )
+{
+ct_checkContext(ctx);
+{
+    ct_joinSweep<NeighborsFn>(ctx);
+    ct_splitSweep<NeighborsFn>(ctx);
+    ct_augment( ctx );
+    return ctx->tree=ct_merge( ctx );
+}
+}
+
+
 
 
 

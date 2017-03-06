@@ -37,36 +37,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ctNodeMap.h"
 #include "sglib.h"
 
-/* local functions */
-static
-ctComponent* ct_sweep ( size_t start, 
-                        size_t end, 
-                        int inc, 
-                        ctComponentType type, 
-                        ctComponent *comps[],
-                        size_t * next, 
-                        ctContext * ctx );
-
-static
-void    
-ct_augment ( ctContext * ctx );
-
-static
-ctArc* ct_merge ( ctContext * ctx );
-
-static
-void  
-ct_checkContext ( ctContext * ctx );
-
-
-
-
 ctContext* 
 ct_init
 (   size_t  numVerts,
     size_t  *totalOrder, 
     double  (*value)( size_t v, void* ),
-    size_t  (*neighbors)( size_t v, size_t* nbrs, void* ),
+    //size_t  (*neighbors)( size_t v, size_t* nbrs, void* ),
      void*  cbData
 )
 {
@@ -88,7 +64,6 @@ ct_init
     ctx->numVerts = numVerts;
     ctx->totalOrder = totalOrder;
     ctx->value = value;
-    ctx->neighbors = neighbors;
     ctx->cbData = cbData;
     
     /* create working mem */
@@ -97,16 +72,16 @@ ct_init
     ctx->splitRoot = NULL;
    
     
-    ctx->joinComps = calloc( sizeof(ctComponent*), ctx->numVerts );
+    ctx->joinComps = (ctComponent**)calloc( sizeof(ctComponent*), ctx->numVerts );
     memset(ctx->joinComps,0x0,sizeof(ctComponent*)*ctx->numVerts );
     
-    ctx->splitComps = calloc( sizeof(ctComponent*), ctx->numVerts );
+    ctx->splitComps = (ctComponent**)calloc( sizeof(ctComponent*), ctx->numVerts );
     memset(ctx->splitComps,0x0,sizeof(ctComponent*)*ctx->numVerts );
 
-    ctx->nextJoin = calloc( sizeof(size_t), ctx->numVerts );
+    ctx->nextJoin = (size_t*)calloc( sizeof(size_t), ctx->numVerts );
     memset(ctx->nextJoin,CT_NIL,sizeof(size_t)*ctx->numVerts );
     
-    ctx->nextSplit = calloc( sizeof(size_t), ctx->numVerts );
+    ctx->nextSplit = (size_t*)calloc( sizeof(size_t), ctx->numVerts );
     memset(ctx->nextSplit,CT_NIL,sizeof(size_t)*ctx->numVerts );
 
     ctx->arcMap = 0;
@@ -133,27 +108,6 @@ void ct_cleanup( ctContext * ctx )
     if (ctx->tree) ct_deleteTree(ctx->tree,ctx); 
 }
 
-
-void ct_joinSweep( ctContext * ctx )
-{
-ct_checkContext(ctx);
-{
-    ctx->joinRoot = 
-        ct_sweep( 0,ctx->numVerts,+1,
-            CT_JOIN_COMPONENT, ctx->joinComps, ctx->nextJoin, ctx  );
-}
-}
-
-void ct_splitSweep( ctContext * ctx )
-{
-ct_checkContext(ctx);
-{
-    ctx->splitRoot = 
-        ct_sweep( ctx->numVerts-1,-1,-1, 
-            CT_SPLIT_COMPONENT, ctx->splitComps, ctx->nextSplit, ctx );
-}
-}
-
 ctArc * ct_mergeTrees( ctContext * ctx )
 {
     assert(ctx->splitRoot && ctx->joinRoot && 
@@ -165,126 +119,6 @@ ctArc * ct_mergeTrees( ctContext * ctx )
 }
 
 
-ctArc * ct_sweepAndMerge( ctContext * ctx )
-{
-ct_checkContext(ctx);
-{
-    ct_joinSweep(ctx);
-    ct_splitSweep(ctx);
-    ct_augment( ctx );
-    return ctx->tree=ct_merge( ctx );
-}
-}
-
-
-
-static
-ctComponent* 
-ct_sweep
-(   size_t start, 
-    size_t end, 
-    int inc, 
-    ctComponentType type,
-    ctComponent *comps[],
-    size_t* next, 
-
-    ctContext* ctx )
-{
-ct_checkContext(ctx);
-{
-    size_t itr = 0, i = 0, n;
-    ctComponent * iComp;
-    int numExtrema = 0;
-    int numSaddles = 0;
-    size_t * nbrs = calloc ( ctx->maxValence, sizeof(size_t) );
-
-    for ( itr = start; itr != end; itr += inc ) {
-        size_t numNbrs;
-        int numNbrComps;
-        
-        i = ctx->totalOrder[itr];
-        
-        iComp = NULL;
-        numNbrs = (*(ctx->neighbors))(i,nbrs,ctx->cbData);
-        numNbrComps = 0;
-        for (n = 0; n < numNbrs; n++) {
-            size_t j = nbrs[n];
-            
-            if ( comps[j] ) {
-                ctComponent * jComp = ctComponent_find( comps[j] );
-
-                if (iComp != jComp) {
-                    if (numNbrComps == 0) {
-                        numNbrComps++;
-                        iComp = jComp;
-                        comps[i] = iComp;
-                        next[iComp->last] = i;
-                    } else if (numNbrComps == 1) {
-                        /* create new component */
-                        ctComponent * newComp = ctComponent_new(type); 
-                        newComp->birth = i;
-                        ctComponent_addPred( newComp, iComp );
-                        ctComponent_addPred( newComp, jComp );
-
-                        /* finish the two existing components */
-                        iComp->death = i;
-                        iComp->succ = newComp;
-                        ctComponent_union(iComp, newComp);
-
-                        jComp->death = i;
-                        jComp->succ = newComp;
-                        ctComponent_union(jComp, newComp);
-
-                        next[ jComp->last ] = i;
-
-                        iComp = newComp;
-                        comps[i] = newComp;
-                        newComp->last = i;
-
-                        numSaddles++;
-                        numNbrComps++;
-                        
-                    } else {
-                        /*finish existing arc */
-                        jComp->death = i;
-                        jComp->succ = iComp;
-                        ctComponent_union(jComp,iComp);
-                        ctComponent_addPred(iComp,jComp);
-                        next[jComp->last] = i;
-                    }
-                }
-            }
-        } /*  for each neighbor */
-
-        if (numNbrComps == 0) {
-            /* this was a local maxima. create a new component */
-            iComp = ctComponent_new(type);
-            iComp->birth = i;
-            comps[i] = iComp;
-            iComp->last = i;
-            numExtrema++;
-        } else if (numNbrComps == 1) {
-            /* this was a regular point. set last */
-            iComp->last = i;
-        }
-
-    } /* for each vertex */
-
-    /* tie off end */
-    iComp = ctComponent_find( comps[i] );
-    iComp->death = i;
-
-    /* terminate path */
-    next[i] = CT_NIL;
-
-    free(nbrs);
-    return iComp;
-}
-}
-
-
-
-static
 void 
 ct_augment( ctContext * ctx )
 {
@@ -384,7 +218,7 @@ void
 ct_queueLeaves( ctLeafQ *lq, ctComponent *c_, ComponentMap *map )
 {
     size_t list_mem_size=256, list_size=0;
-    ctComponent**list = malloc(list_mem_size*sizeof(ctComponent*));
+    ctComponent**list = (ctComponent**)malloc(list_mem_size*sizeof(ctComponent*));
 
     size_t stack_mem_size = 1024, stack_size=1;
     ctComponent **stack = (ctComponent**) malloc( stack_mem_size * sizeof(ctComponent*) );
@@ -397,7 +231,7 @@ ct_queueLeaves( ctLeafQ *lq, ctComponent *c_, ComponentMap *map )
         list[list_size++] = c;
         if (list_size == list_mem_size) {
             list_mem_size *= 2;
-            list = realloc(list,list_mem_size*sizeof(ctComponent*));
+            list = (ctComponent**)realloc(list,list_mem_size*sizeof(ctComponent*));
         }
 
         if (ctComponent_isLeaf(c)) {
@@ -409,7 +243,7 @@ ct_queueLeaves( ctLeafQ *lq, ctComponent *c_, ComponentMap *map )
                 stack[stack_size++] = pred; 
                 if (stack_size == stack_mem_size) {
                     stack_mem_size *= 2;
-                    stack = realloc(stack,stack_mem_size*sizeof(ctComponent*));
+                    stack = (ctComponent**)realloc(stack,stack_mem_size*sizeof(ctComponent*));
                 } 
             }
         }
@@ -426,15 +260,6 @@ ct_queueLeaves( ctLeafQ *lq, ctComponent *c_, ComponentMap *map )
     map->size = list_size;
 }
 
-
-
-
-
-
-
-
-
-static
 ctArc * 
 ct_merge( ctContext * ctx )
 {
@@ -684,17 +509,6 @@ if ( ctx->arcMap == 0 ) {
 }
 }
 
-
-
-static
-void 
-ct_checkContext ( ctContext * ctx ) 
-{
-    assert( ctx->numVerts > 0 );
-    assert( ctx->totalOrder );
-    assert( ctx->value );
-    assert( ctx->neighbors );
-}
 
 
 ctArc ** 
@@ -956,6 +770,14 @@ void
 ct_priorityFunc( ctContext *ctx, double (*priorityFunc)(ctNode*,void*) )
 {
     ctx->priority = priorityFunc;
+}
+
+void 
+ct_checkContext ( ctContext * ctx ) 
+{
+    assert( ctx->numVerts > 0 );
+    assert( ctx->totalOrder );
+    assert( ctx->value );
 }
 
 /**/
