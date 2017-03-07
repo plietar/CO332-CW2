@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdlib.h> /* size_t */
 #include <stdint.h>
+#include <thread>
 
 #include "ctArc.h"
 #include "ctBranch.h"
@@ -398,8 +399,14 @@ ctArc * ct_sweepAndMerge( ctContext * ctx )
 {
 ct_checkContext(ctx);
 {
-    ct_joinSweep<NeighborsFn>(ctx);
+    std::thread first([ctx]() {
+        ct_joinSweep<NeighborsFn>(ctx);
+    });
+
     ct_splitSweep<NeighborsFn>(ctx);
+
+    first.join();
+
     ct_augment( ctx );
     return ctx->tree=ct_merge( ctx );
 }

@@ -8,9 +8,9 @@ OPTFLAGS = -O2 -funroll-all-loops -fopenmp
 
 #CFLAGS = -ansi -pedantic -Wall -Werror -fPIC 
 #CFLAGS = -ansi -pedantic -Wall -fPIC 
-CFLAGS = -ansi $(OPTFLAGS) -g
+CFLAGS = $(OPTFLAGS) -g
 
-CPPFLAGS = $(OPTFLAGS) -I./include $(DEFINES)
+CPPFLAGS = $(OPTFLAGS) -std=c++11 -I./include $(DEFINES)
 
 LINKFLAGS = -lz -g
 
@@ -31,25 +31,25 @@ simple : $(objs)
 	$(CCPP)  $(CPPFLAGS) -o simple $^ $(LINKFLAGS)
 
 src/tourtre.o : src/tourtre.cpp include/tourtre.h include/ctMisc.h include/ctArc.h include/ctNode.h include/ctComponent.h include/ctNode.h include/ctQueue.h src/ctAlloc.h
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CCPP) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 src/ctArc.o : src/ctArc.cpp include/tourtre.h include/ctMisc.h include/ctArc.h 
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CCPP) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 src/ctBranch.o : src/ctBranch.cpp include/tourtre.h include/ctMisc.h include/ctBranch.h 
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CCPP) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 src/ctComponent.o : src/ctComponent.cpp include/tourtre.h include/ctMisc.h include/ctComponent.h 
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CCPP) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 src/ctNode.o : src/ctNode.cpp include/tourtre.h include/ctMisc.h include/ctNode.h 
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CCPP) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 src/ctQueue.o : src/ctQueue.cpp include/tourtre.h include/ctMisc.h include/ctQueue.h 
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CCPP) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 src/ctNodeMap.o : src/ctNodeMap.cpp include/ctNodeMap.h include/ctNode.h include/ctQueue.h src/sglib.h
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CCPP) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 examples/simple/obj/Data.o: examples/simple/src/Data.cpp examples/simple/src/Data.h examples/simple/src/Global.h 
 	$(CCPP) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
