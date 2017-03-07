@@ -2,9 +2,9 @@ CC = gcc
 CCPP = g++
 
 #preprocessor defines
-DEFINES = -DUSE_ZLIB
+DEFINES = -DUSE_ZLIB -D_GLIBCXX_PARALLEL
 
-OPTFLAGS = -O2 -funroll-all-loops
+OPTFLAGS = -O2 -funroll-all-loops -fopenmp
 
 #CFLAGS = -ansi -pedantic -Wall -Werror -fPIC -O2
 #CFLAGS = -ansi -pedantic -Wall -fPIC -O2
