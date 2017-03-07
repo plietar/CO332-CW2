@@ -33,19 +33,19 @@ void Mesh::createGraph(std::vector<size_t> & order)
 	sort( order.begin() , order.end(), AscendingOrder(data) );
 }
 
-void Mesh::getNeighbors(size_t i, std::vector<size_t>& n) 
+size_t Mesh::getNeighbors(size_t i, size_t *nbrs)
 {
 	uint x,y,z;
 	data.convertIndex( i, x, y, z );
 	if ( (x+y+z)%2 == ODD_TET_PARITY ) {
-		find6Neighbors(x,y,z,n);
+		return find6Neighbors(x,y,z, nbrs);
 	} else {
-		find18Neighbors(x,y,z,n);
+		return find18Neighbors(x,y,z, nbrs);
 	}
 }
 
 
-void Mesh::find6Neighbors( uint x, uint y, uint z, std::vector< size_t > & neighbors) 
+size_t Mesh::find6Neighbors( uint x, uint y, uint z, size_t *nbrs) 
 {
 	uint nx[6],ny[6],nz[6];
 	
@@ -63,16 +63,19 @@ void Mesh::find6Neighbors( uint x, uint y, uint z, std::vector< size_t > & neigh
 	ny[4] += 1;
 	nz[5] += 1;
 	
+        size_t j = 0;
 	for (uint i = 0; i < 6; i++) {
-		if (nx[i] >= data.size[0]) continue;	
-		if (ny[i] >= data.size[1]) continue;	
-		if (nz[i] >= data.size[2]) continue;	
-	
-		neighbors.push_back( data.convertIndex(nx[i],ny[i],nz[i]) );
+           if (nx[i] >= data.size[0]) continue;
+           if (ny[i] >= data.size[1]) continue;
+           if (nz[i] >= data.size[2]) continue;
+
+           nbrs[j] = data.convertIndex(nx[i],ny[i],nz[i]);
+           j += 1;
 	}
+        return j;
 }
 
-void Mesh::find18Neighbors( uint x, uint y, uint z, std::vector< size_t > & neighbors) 
+size_t Mesh::find18Neighbors( uint x, uint y, uint z, size_t *nbrs) 
 {
 	uint nx[18],ny[18],nz[18];
 	
@@ -105,13 +108,14 @@ void Mesh::find18Neighbors( uint x, uint y, uint z, std::vector< size_t > & neig
 	nz[16] -= 1; nx[16] += 1;
 	nz[17] += 1; nx[17] += 1;
 	
+        size_t j = 0;
 	for (uint i = 0; i < 18; i++) {
-		
-		
-		if (nx[i] >= data.size[0]) continue;	
-		if (ny[i] >= data.size[1]) continue;	
-		if (nz[i] >= data.size[2]) continue;	
-	
-		neighbors.push_back( data.convertIndex(nx[i],ny[i],nz[i]) );
+           if (nx[i] >= data.size[0]) continue;
+           if (ny[i] >= data.size[1]) continue;
+           if (nz[i] >= data.size[2]) continue;
+
+           nbrs[j] = data.convertIndex(nx[i],ny[i],nz[i]);
+           j += 1;
 	}
+        return j;
 }
