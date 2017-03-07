@@ -4,7 +4,7 @@ CCPP = g++
 #preprocessor defines
 DEFINES = -DUSE_ZLIB -D_GLIBCXX_PARALLEL
 
-OPTFLAGS = -O2 -funroll-all-loops -fopenmp
+OPTFLAGS = -Ofast -march=native -flto -funroll-all-loops -fopenmp
 
 #CFLAGS = -ansi -pedantic -Wall -Werror -fPIC 
 #CFLAGS = -ansi -pedantic -Wall -fPIC 
