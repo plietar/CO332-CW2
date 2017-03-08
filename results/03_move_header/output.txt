@@ -1,0 +1,3 @@
+Loading CThead with dimensions 256 x 256 x 113, of type uint16
+max value was 12 and min value was 0
+Number of nodes in the tree: 33904
